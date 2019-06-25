@@ -1,6 +1,8 @@
 const djs = require("discord.js");
 const readline = require("readline");
 const fs = require("fs");
+const comms = require("./libraries/command.js");
+const api = require("./libraries/api.js");
 
 const rl = readline.createInterface({
   input : process.stdin,
@@ -19,10 +21,16 @@ bot.on("ready", ()=>{
   console.log("Bot logged in successfully!");
 });
 
-fs.readFile("./details.json", (err, data) => {
-  data = JSON.parse(data);
-  bot.login(data.token);
-  const disAPI = data.secret;
-  const steAPI = data.steamAPI;
-  const batAPI = data.battlenetAPI;
+bot.on("message", (message) => {
+  let text = message.content;
+  if(text.startsWith(comms.DELIMITER)){
+    text = text.substring(comms.DELIMITER.length);
+    name = text.substring(0,text.indexOf(" "));
+    text.substring(name.length+1);
+    comms.runCommand(text, []);
+  }
+});
+
+api.getKey("token").then((data) => {
+  bot.login(data);
 });
