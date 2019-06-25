@@ -24,10 +24,7 @@ bot.on("ready", ()=>{
 bot.on("message", (message) => {
   let text = message.content;
   if(text.startsWith(comms.DELIMITER)){
-    text = text.substring(comms.DELIMITER.length);
-    name = text.substring(0,text.indexOf(" "));
-    text.substring(name.length+1);
-    comms.runCommand(text, []);
+    comms.runCommand(message);
   }
 });
 
