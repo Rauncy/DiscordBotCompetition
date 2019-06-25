@@ -8,7 +8,7 @@ exports.autoAddToGroups = (guild, user) => {
       console.log(res.headers);
       res.on("data", (d) => {
         console.log(d.toString());
-      })
+      });
     });
   });
 }
