@@ -22,11 +22,10 @@ return
 */
 function addCommand(name, details, run){
   if(!commands[name]){
-    let {params, syntax, description} = details;
     commands[name] = {};
-    commands[name].syntax = syntax;
-    commands[name].description = description;
-    commands[name].params = params;
+    Object.keys(details).forEach((v)=>{
+      commands[name][v] = details[v];
+    });
     commands[name].run = run;
     return true;
   }else return false;
@@ -165,28 +164,111 @@ function matchesParamType(param, type){
 
 exports.runCommand = (message) => {
   if(message.content.startsWith(exports.DELIMITER)){
-    let com = "";
-    let text = message.content.substring(exports.DELIMITER.length);
-    Object.keys(commands).forEach((v) => {
-      if(text.startsWith(v) && com.length<v.length) com = v;
-    });
-    if(com.length>0){
-      text = text.substring(com.length+1);
-      commands[com].run(message, splitParameters(commands[com].params, text));
+    let name = exports.findBestRawFit(message.content);
+    if(name){
+      let text = message.content.substring(name.length+1);
+
+      //Execute command procedures
+      commands[name].run(message, splitParameters(commands[name].params, text));
     }else{
       //Command does not exist!
-      console.log(`${message.split(" ")[0]} is not a command!`);
+      console.log(`${message.content.split(" ")[0]} is not a command!`);
     }
   }
 }
 
 exports.findBestRawFit = (raw) => {
-
+  if(raw.startsWith(exports.DELIMITER)){
+    raw = raw.substring(exports.DELIMITER.length);
+  }
+  let com = "";
+  Object.keys(commands).forEach((v) => {
+    console.log(raw + " " + v + " " + com);
+    if(raw.startsWith(v) && com.length<v.length) com = v;
+  });
+  if(com.length>0) return com;
+  else return null;
 }
 
-//Command
+//Commands
 
-addCommand("split", {params : "WwsW"}, (message, params) => {
-  console.log("COMMAND PARAMS");
-  console.log(params);
+addCommand("help", {
+  params : "s",
+  description : "Help is a command to tell you to what each command the bot has to offer does and how to use them.",
+  syntax : ["Command"]
+}, (message, params) => {
+  let name = exports.findBestRawFit(params[0]);
+  console.log("HPAR " + params[0] + " " + name);
+  if(name){
+    message.channel.send({embed:{
+      color : 4223940,
+      title : `Help for the ${name} action`,
+      fields : [
+        {
+          name : `${exports.DELIMITER}${name}`,
+          value : `${commands[name].description}`
+        },
+        {
+          name : "Further reading",
+          value : `For information on using \`${exports.DELIMITER}${name}\`, use \`${exports.DELIMITER}help syntax ${name}\``
+        }
+      ]
+    }})
+    // message.channel.send(`Help for \`${exports.DELIMITER}${params[0]}\`:\n*${commands[name].description}*\nFor information on how to use \`${exports.DELIMITER}${name}\`, use \`${exports.DELIMITER}help syntax ${name}\``);
+  }else{
+    message.channel.send({embed:{
+      color : 12663844,
+      title : "Help error",
+      fields : [
+        {
+          name : "Command does not exist",
+          value : `\`${exports.DELIMITER}${params[0]}\` is not a command. Please enter a recognised command.`
+        }
+      ]
+    }});
+  }
+});
+
+addCommand("help syntax", {
+  params : "s",
+  description : "Help syntax is a command to help you learn how to use certain commands by telling you what the parameters are and if they are optional or not",
+  syntax : ["Command"]
+}, (message, params) => {
+  let name = exports.findBestRawFit(params[0]);
+  if(name){
+    let pars = [];
+    let synt = commands[name].syntax;
+    let brk = commands[name].params;
+    for(let i=0;i<synt.length;i++){
+      let add = brk[i].toLowerCase() == brk[i]?"(":"[";
+      add+=synt[i]+(add.startsWith("(")?")":"]");
+      pars.push(add);
+    }
+    message.channel.send({embed:{
+      color : 4223940,
+      title : `Syntax for the ${exports.DELIMITER}${name} action`,
+      fields : [
+        {
+          name : "Key for parameters",
+          value : "These *[parameters]* are constant where as these *(parameters)* are optional."
+        },
+        {
+          name : "Paramaters",
+          value : pars.join(" ")
+        }
+      ]
+    }});
+  }else{
+    //No such action
+    message.channel.send({embed:{
+      color : 12663844,
+      title : "Syntax error",
+      fields : [
+        {
+          name : "Command does not exist",
+          value : `\`${exports.DELIMITER}${params[0]}\` is not a command. Please enter a recognised command.`
+        }
+      ]
+    }});
+  }
 });
