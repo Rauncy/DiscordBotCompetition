@@ -24,7 +24,56 @@ bot.on("ready", ()=>{
 bot.on("message", (message) => {
   let text = message.content;
   if(text.startsWith(comms.DELIMITER)){
-    comms.runCommand(message);
+    try{
+      comms.runCommand(message);
+    }catch(err){
+      console.log("OOF " +JSON.stringify(err));
+      switch(err.type){
+        case "INSUFFICENT_PARAMETERS":
+          message.channel.send({embed:{
+            color : 12663844,
+            title : `Error executing ${err.culprit}`,
+            fields : [
+              {
+                name : "Insufficent Parameters",
+                value : `\`${err.culprit}\` received too little parameters.`
+              },
+              {
+                name : "Proper Usage",
+                value : `\`${comms.DELIMITER}${err.culprit} ${comms.syntaxOf(err.culprit).join(" ")}\``
+              }
+            ]
+          }});
+          break;
+        case "MISMATCHED_PARAMETER":
+          message.channel.send({embed:{
+            color : 12663844,
+            title : `Error executing ${err.culprit}`,
+            fields : [
+              {
+                name : "Incorrect Parameters",
+                value : `${err.culprit} received a wrong type of parameter.`
+              },
+              {
+                name : "Details",
+                value : `Expected a ${err.mismatch.expected} in the place of \`${err.mismatch.got}\`.`
+              }
+            ]
+          }});
+          break;
+        case "NO_COMMAND":
+        message.channel.send({embed:{
+          color : 12663844,
+          title : `Error executing ${err.culprit}`,
+          fields : [
+            {
+              name : "Command doesn't exist",
+              value : `${err.culprit} is not a recognised action.`
+            }
+          ]
+        }});
+      }
+    }
   }
 });
 

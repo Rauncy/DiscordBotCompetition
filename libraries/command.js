@@ -32,23 +32,16 @@ function addCommand(name, details, run){
 }
 
 function splitParameters(splitString, params){
-  params = params.split(/ +/);
-
-  console.log(params);
-  console.log(splitString);
-  console.log("\n");
+  params = params.trim();
+  if(params.length>0) params = params.split(/ +/);
+  else params = [];
+  console.log(params.length);
 
   //Analyze parameters
   let req = 0;
-  let beforeS = true;
-  let befCount = 0;
-  let aftCount = 0;
 
   for(let i=0;i<splitString.length;i++){
     if(splitString[i].toUpperCase() == splitString[i]) req++;
-    else if(splitString[i]=="s") beforeS = false;
-    else if(beforeS) befCount++;
-    else aftCount++;
   }
   if(params.length>=req){
     //If enough, evaluate params
@@ -58,9 +51,7 @@ function splitParameters(splitString, params){
     let evaled = 0;
 
     //Evaluate front
-    for(let i=0;(i!=splitString.indexOf("s")||!rev)&&i<splitString.length;i++){
-      console.log("REQ "+i);
-      console.log(splitString[i] + " " + params[i]);
+    for(let i=0;(i!=splitString.toLowerCase().indexOf("s")||!rev)&&i<splitString.length;i++){
       if(splitString[i].toUpperCase() == splitString[i]){
         if(matchesParamType(params[i],splitString[i])){
           let tAdd = params[i];
@@ -70,10 +61,15 @@ function splitParameters(splitString, params){
           evaled++;
         }else{
           //Incorrect parameter type, throw error
-          throw "MISMATCHED_PARAMETER";
+          throw {
+            type : "MISMATCHED_PARAMETER",
+            mismatch : {
+              expected : splitString[i].toLowerCase()=="n"?"Number":"Word",
+              got : params[i]
+            }
+          };
         }
-      }else if(splitString[i]=="s"){
-        console.log("FLIP");
+      }else if(splitString[i].toLowerCase()=="s"){
         //Reverse params and splitString
         rev = true;
         params = params.reverse();
@@ -89,69 +85,56 @@ function splitParameters(splitString, params){
     splitString = splitString.split("").reverse().join("");
     rev = false;
 
-    console.log(params);
-    console.log(splitString);
-    console.log(ret);
-    console.log("\n");
-
     //Evaluate optional params
-    for(let i=0;(i!=splitString.indexOf("s")||!rev)&&i<splitString.length;i++){
-      console.log("OPT "+i);
-      console.log(splitString[i] + " " + params[i]);
-      if(splitString[i]=="s"){
+    for(let i=0;(i!=splitString.toLowerCase().indexOf("s")||!rev)&&i<splitString.length;i++){
+      if(splitString[i].toLowerCase()=="s"){
         //Reverse params and splitString
-        console.log("FLIP");
         rev = true;
         params = params.reverse();
         splitString = splitString.split("").reverse().join("");
         i=-1;
       }else if(splitString[i].toLowerCase() == splitString[i]){
         if(matchesParamType(params[i],splitString[i])){
-          console.log("RB");
-          console.log(params[i]);
-          console.log(ret);
           if(rev) ret = ret.slice(0,ret.length-i).concat([params[i]], ret.slice(ret.length-i));
           else ret = ret.slice(0,i).concat([params[i]], ret.slice(i));
           params[i] = "";
           evaled++;
-          console.log(ret);
         }else{
           //Incorrect parameter type, throw error
-          throw "MISMATCHED_PARAMETER";
+          throw {
+            type : "MISMATCHED_PARAMETER",
+            mismatch : {
+              expected : splitString[i].toLowerCase()=="n"?"Number":"Word",
+              got : params[i]
+            }
+          };
         }
       }
     }
-
-    console.log(params);
-    console.log(splitString);
-    console.log(ret);
-    console.log("\n");
-
     //Evaluate s
     if(params.length>evaled){
-      console.log("EVAL S");
       splitString = splitString.split("").reverse().join("");
       params = params.reverse();
-      let sInd = splitString.indexOf("s");
+      let sInd = splitString.toLowerCase().indexOf("s");
       for(let i=0;i<params.length;i++){
         if(params[i]==""){
           params.splice(i,1);
           i--;
         }
       }
-      console.log(params);
       ret = ret.slice(0,sInd).concat([params.join(" ")], ret.slice(sInd));
     }
     return ret;
 
   }else{
     //Not enough params given, throw error
-    throw "INSUFFICENT_PARAMETERS";
+    throw {
+      type : "INSUFFICENT_PARAMETERS",
+    };
   }
 }
 
 function matchesParamType(param, type){
-  console.log(`${type} on "${param}"`);
   switch(type.toLowerCase()){
     case "w":
       return /^[^\s]+$/.test(param);
@@ -163,16 +146,25 @@ function matchesParamType(param, type){
 }
 
 exports.runCommand = (message) => {
+  console.log("CONT " + message.content);
   if(message.content.startsWith(exports.DELIMITER)){
     let name = exports.findBestRawFit(message.content);
     if(name){
       let text = message.content.substring(name.length+1);
 
       //Execute command procedures
-      commands[name].run(message, splitParameters(commands[name].params, text));
+      try{
+        commands[name].run(message, splitParameters(commands[name].params, text));
+      }catch(err){
+        err.culprit = name;
+        throw err;
+      }
     }else{
       //Command does not exist!
-      console.log(`${message.content.split(" ")[0]} is not a command!`);
+      throw {
+        type : "NO_COMMAND",
+        culprit : message.content.split(" ")[0]
+      };
     }
   }
 }
@@ -183,7 +175,6 @@ exports.findBestRawFit = (raw) => {
   }
   let com = "";
   Object.keys(commands).forEach((v) => {
-    console.log(raw + " " + v + " " + com);
     if(raw.startsWith(v) && com.length<v.length) com = v;
   });
   if(com.length>0) return com;
@@ -197,45 +188,59 @@ addCommand("help", {
   description : "Help is a command to tell you to what each command the bot has to offer does and how to use them.",
   syntax : ["Command"]
 }, (message, params) => {
-  let name = exports.findBestRawFit(params[0]);
-  console.log("HPAR " + params[0] + " " + name);
-  if(name){
+  console.log(params);
+  if(params.length===0){
+    //List commands
     message.channel.send({embed:{
       color : 4223940,
-      title : `Help for the ${name} action`,
+      title : `Help`,
       fields : [
         {
-          name : `${exports.DELIMITER}${name}`,
-          value : `${commands[name].description}`
+          name : "All actions",
+          value : `\`${exports.DELIMITER}${Object.keys(commands).join(`\`, \`${exports.DELIMITER}`)}\``
         },
         {
-          name : "Further reading",
-          value : `For information on using \`${exports.DELIMITER}${name}\`, use \`${exports.DELIMITER}help syntax ${name}\``
-        }
-      ]
-    }})
-    // message.channel.send(`Help for \`${exports.DELIMITER}${params[0]}\`:\n*${commands[name].description}*\nFor information on how to use \`${exports.DELIMITER}${name}\`, use \`${exports.DELIMITER}help syntax ${name}\``);
-  }else{
-    message.channel.send({embed:{
-      color : 12663844,
-      title : "Help error",
-      fields : [
-        {
-          name : "Command does not exist",
-          value : `\`${exports.DELIMITER}${params[0]}\` is not a command. Please enter a recognised command.`
+          name : "Additional help",
+          value : `For help on a specific command, please use \`${exports.DELIMITER}help ${exports.syntaxOf("help").join(" ")}\``
         }
       ]
     }});
+  }else{
+    //Provide help on a specific command
+    let name = exports.findBestRawFit(params[0]);
+    if(name){
+      message.channel.send({embed:{
+        color : 4223940,
+        title : `Help for the ${name} action`,
+        fields : [
+          {
+            name : `${exports.DELIMITER}${name}`,
+            value : `${commands[name].description}`
+          },
+          {
+            name : "Further reading",
+            value : `For information on using \`${exports.DELIMITER}${name}\`, use \`${exports.DELIMITER}syntax ${name}\``
+          }
+        ]
+      }});
+      // message.channel.send(`Help for \`${exports.DELIMITER}${params[0]}\`:\n*${commands[name].description}*\nFor information on how to use \`${exports.DELIMITER}${name}\`, use \`${exports.DELIMITER}help syntax ${name}\``);
+    }else{
+      message.channel.send({embed:{
+        color : 12663844,
+        title : "Help error",
+        fields : [
+          {
+            name : "Command does not exist",
+            value : `\`${exports.DELIMITER}${params[0]}\` is not a command. Please enter a recognised command.`
+          }
+        ]
+      }});
+    }
   }
 });
 
-addCommand("help syntax", {
-  params : "s",
-  description : "Help syntax is a command to help you learn how to use certain commands by telling you what the parameters are and if they are optional or not",
-  syntax : ["Command"]
-}, (message, params) => {
-  let name = exports.findBestRawFit(params[0]);
-  if(name){
+exports.syntaxOf = (name) => {
+  if(commands[name]){
     let pars = [];
     let synt = commands[name].syntax;
     let brk = commands[name].params;
@@ -244,17 +249,30 @@ addCommand("help syntax", {
       add+=synt[i]+(add.startsWith("(")?")":"]");
       pars.push(add);
     }
+    return pars;
+  }
+};
+
+addCommand("syntax", {
+  params : "S",
+  description : "Help syntax is a command to help you learn how to use certain commands by telling you what the parameters are and if they are optional or not",
+  syntax : ["Command"]
+}, (message, params) => {
+  let name = exports.findBestRawFit(params[0]);
+  console.log(name);
+  if(name){
+    let pars = exports.syntaxOf(params[0]);
     message.channel.send({embed:{
       color : 4223940,
-      title : `Syntax for the ${exports.DELIMITER}${name} action`,
+      title : `Syntax for the ${name} action`,
       fields : [
         {
           name : "Key for parameters",
           value : "These *[parameters]* are constant where as these *(parameters)* are optional."
         },
         {
-          name : "Paramaters",
-          value : pars.join(" ")
+          name : "Parameters",
+          value : `\`${pars.join(" ")}\``
         }
       ]
     }});
