@@ -3,7 +3,7 @@ const grp = require("../libraries/group.js");
 //Commands is organized by {name:{syntax, description, params, function}}
 var commands = {};
 
-exports.DELIMITER = ".";
+exports.DELIMITER = "!";
 
 /*
 Key for splitting paramaters
@@ -175,7 +175,7 @@ exports.runCommand = (message) => {
       commands[com].run(message, splitParameters(commands[com].params, text));
     }else{
       //Command does not exist!
-      console.log(`${message.split(" ")[0]} is not a command!`);
+      console.log(`${message.content.split(" ")[0]} is not a command!`);
     }
   }
 }
@@ -189,4 +189,11 @@ exports.findBestRawFit = (raw) => {
 addCommand("split", {params : "WwsW"}, (message, params) => {
   console.log("COMMAND PARAMS");
   console.log(params);
+});
+
+addCommand("bestfit", {params : ""}, (message, params)=>{
+  message.author.client.broadcasts.forEach((key, value, map) => {
+    console.log(key + " " + value);
+  });
+  console.log(message.member.voiceChannel.members);
 });
