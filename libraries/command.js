@@ -181,6 +181,20 @@ exports.findBestRawFit = (raw) => {
   else return null;
 }
 
+exports.syntaxOf = (name) => {
+  if(commands[name]){
+    let pars = [];
+    let synt = commands[name].syntax;
+    let brk = commands[name].params;
+    for(let i=0;i<synt.length;i++){
+      let add = brk[i].toLowerCase() == brk[i]?"(":"[";
+      add+=synt[i]+(add.startsWith("(")?")":"]");
+      pars.push(add);
+    }
+    return pars;
+  }
+};
+
 //Commands
 
 addCommand("help", {
@@ -238,20 +252,6 @@ addCommand("help", {
     }
   }
 });
-
-exports.syntaxOf = (name) => {
-  if(commands[name]){
-    let pars = [];
-    let synt = commands[name].syntax;
-    let brk = commands[name].params;
-    for(let i=0;i<synt.length;i++){
-      let add = brk[i].toLowerCase() == brk[i]?"(":"[";
-      add+=synt[i]+(add.startsWith("(")?")":"]");
-      pars.push(add);
-    }
-    return pars;
-  }
-};
 
 addCommand("syntax", {
   params : "S",
