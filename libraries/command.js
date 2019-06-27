@@ -308,6 +308,7 @@ addCommand("bestfit", {params : ""}, (message, params)=>{
 
   if (!caught) {
     // Get all the games that all these players have
+
     var players = message.member.voiceChannel.members.keyArray();
     var validGames = new Array();
     console.log(arr);
