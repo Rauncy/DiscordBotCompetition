@@ -156,16 +156,11 @@ exports.runCommand = (message) => {
       try{
         commands[name].run(message, splitParameters(commands[name].params, text));
       }catch(err){
-<<<<<<< HEAD
-        err.culprit = name;
-        throw err;
-=======
         if(err.type){
           err.culprit = name;
           throw err;
         }
         else console.error(err);
->>>>>>> master
       }
     }else{
       //Command does not exist!
@@ -297,14 +292,40 @@ addCommand("syntax", {
       ]
     }});
   }
-<<<<<<< HEAD
 });
 
 addCommand("bestfit", {params : ""}, (message, params)=>{
-  message.author.client.broadcasts.forEach((key, value, map) => {
+  /*message.author.client.broadcasts.forEach((key, value, map) => {
     console.log(key + " " + value);
-  });
-  console.log(message.member.voiceChannel.members);
-=======
->>>>>>> master
+  });*/
+  var caught = false;
+  try {
+    console.log(message.member.voiceChannel.members);
+  }
+  catch (err) {
+    caught = true;
+  }
+
+  if (!caught) {
+    var players = message.member.voiceChannel.members.keyArray();
+    var validGames = new Array();
+    console.log(arr);
+    grp.getGuild(message.guild).then((data)=>{
+      Object.keys(data).forEach((g)=>{
+        let ids = data[g];
+        var everyPlayer = true;
+        players.forEach((p)=>{
+          if (!g.includes(p)) {
+            everyPlayer = false;
+          }
+        });
+        if (everyPlayer) {
+          validGames.push(new Map([g, ids]));
+        }
+      });
+    });
+  }
+  else {
+    message.channel.send("You must be in a voice channel to use this commmand.")
+  }
 });
