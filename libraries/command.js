@@ -156,8 +156,16 @@ exports.runCommand = (message) => {
       try{
         commands[name].run(message, splitParameters(commands[name].params, text));
       }catch(err){
+<<<<<<< HEAD
         err.culprit = name;
         throw err;
+=======
+        if(err.type){
+          err.culprit = name;
+          throw err;
+        }
+        else console.error(err);
+>>>>>>> master
       }
     }else{
       //Command does not exist!
@@ -289,6 +297,7 @@ addCommand("syntax", {
       ]
     }});
   }
+<<<<<<< HEAD
 });
 
 addCommand("bestfit", {params : ""}, (message, params)=>{
@@ -296,4 +305,6 @@ addCommand("bestfit", {params : ""}, (message, params)=>{
     console.log(key + " " + value);
   });
   console.log(message.member.voiceChannel.members);
+=======
+>>>>>>> master
 });
