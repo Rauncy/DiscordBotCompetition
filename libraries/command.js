@@ -306,7 +306,7 @@ addCommand("bestfit", {params : ""}, (message, params)=>{
 
     var players = message.member.voiceChannel.members.keyArray();
     var validGames = [];
-    console.log(players);
+    //console.log(players);
     grp.getGuild(message.guild).then((data)=>{
       Object.keys(data).forEach((g)=>{
         let ids = data[g];
@@ -319,11 +319,11 @@ addCommand("bestfit", {params : ""}, (message, params)=>{
         if (everyPlayer) {
           var m = new Map();
           m.set(g, ids);
-          console.log(m);
+          //console.log(m);
           validGames.push(m);
         }
       });
-      console.log(validGames);
+      //console.log(validGames);
 
       //Sorting games based on the least number of people who have them
       for (var o = 0; o < validGames.length; o++) {
@@ -335,7 +335,7 @@ addCommand("bestfit", {params : ""}, (message, params)=>{
           }
         }
       }
-      console.log(validGames);
+      //console.log(validGames);
 
       var str = "Your Best Fit Games\n";
       for (var i = 0; i < validGames.length; i++) {
@@ -348,7 +348,7 @@ addCommand("bestfit", {params : ""}, (message, params)=>{
 
   }
   else {
-    message.channel.send("You must be in a voice channel to use this commmand.")
+    message.channel.send("You must be in a voice channel to use this command.")
   }
 });
 
