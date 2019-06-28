@@ -3,7 +3,7 @@ const grp = require("../libraries/group.js");
 //Commands is organized by {name:{syntax, description, params, function}}
 var commands = {};
 
-exports.DELIMITER = ".";
+exports.DELIMITER = "!";
 
 /*
 Key for splitting paramaters
@@ -286,6 +286,69 @@ addCommand("syntax", {
         }
       ]
     }});
+  }
+});
+
+addCommand("bestfit", {params : ""}, (message, params)=>{
+  /*message.author.client.broadcasts.forEach((key, value, map) => {
+    console.log(key + " " + value);
+  });*/
+  var caught = false;
+  try {
+    console.log(message.member.voiceChannel.members);
+  }
+  catch (err) {
+    caught = true;
+  }
+
+  if (!caught) {
+    // Get all the games that all these players have
+
+    var players = message.member.voiceChannel.members.keyArray();
+    var validGames = [];
+    console.log(players);
+    grp.getGuild(message.guild).then((data)=>{
+      Object.keys(data).forEach((g)=>{
+        let ids = data[g];
+        var everyPlayer = true;
+        players.forEach((p)=>{
+          if (!ids.includes(p)) {
+            everyPlayer = false;
+          }
+        });
+        if (everyPlayer) {
+          var m = new Map();
+          m.set(g, ids);
+          console.log(m);
+          validGames.push(m);
+        }
+      });
+      console.log(validGames);
+
+      //Sorting games based on the least number of people who have them
+      for (var o = 0; o < validGames.length; o++) {
+        for (var i = o + 1; i < validGames.length; i++) {
+          if (validGames[i].values().next().value.length < validGames[o].values().next().value.length) {
+            var temp = validGames[i];
+            validGames[i] = validGames[o];
+            validGames[o] = temp;
+          }
+        }
+      }
+      console.log(validGames);
+
+      var str = "Your Best Fit Games\n";
+      for (var i = 0; i < validGames.length; i++) {
+        var count;
+        str += (i + 1) + ". " + validGames[i].keys().next().value + "\n";
+      }
+
+      message.channel.send(str);
+    }).catch((err)=>{console.error(err);});
+
+  }
+  else {
+    message.channel.send("You must be in a voice channel to use this commmand.")
   }
 });
 
