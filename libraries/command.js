@@ -31,103 +31,97 @@ function addCommand(name, details, run){
   }else return false;
 }
 
+//Evaluate params given and needed params to group them up and eval them
 function splitParameters(splitString, params){
-  params = params.trim();
-  if(params.length>0) params = params.split(/ +/);
-  else params = [];
-  console.log(params.length);
-
-  //Analyze parameters
+  params = params.split(/ +/);
+  console.log("P");
+  console.log(params);
+  if(params[0]==""&&params.length===1) params = [];
+  //Evaluate params
+  let ret = [];
   let req = 0;
-
+  let opt;
+  let befS = 0, aftS = 0;
+  let sPas = false;
+  let sReq = false;
+  let sInd;
   for(let i=0;i<splitString.length;i++){
-    if(splitString[i].toUpperCase() == splitString[i]) req++;
+    if(splitString[i].toUpperCase()=="S"){
+      sPas = true;
+      sInd = i;
+    }
+    if(splitString[i].toUpperCase()==splitString[i]){
+      req++;
+      if(splitString[i]=="S") sReq = true;
+    }else{
+      if(sPas) aftS++;
+      else befS++;
+    }
   }
+  opt = params.length-req;
   if(params.length>=req){
-    //If enough, evaluate params
+    //Fill req params
+    sPas = false;
+    let evaled = 0, evalF = 0, evalB = 0;
     let ret = [];
-    let revRet = [];
-    let rev = false;
-    let evaled = 0;
-
-    //Evaluate front
-    for(let i=0;(i!=splitString.toLowerCase().indexOf("s")||!rev)&&i<splitString.length;i++){
-      if(splitString[i].toUpperCase() == splitString[i]){
-        if(matchesParamType(params[i],splitString[i])){
-          let tAdd = params[i];
-          params[i] = "";
-          if(rev) revRet.push(tAdd);
-          else ret.push(tAdd);
-          evaled++;
+    //Eval all except s
+    for(let i=0;i<splitString.length&&evaled<params.length-(sReq?1:0);i++){
+      let sPos = i+(sPas?params.length-splitString.length:0);
+      if(splitString[i].toLowerCase()!="s"){
+        if(splitString[i].toUpperCase()==splitString[i]){
+          //Is req, process
+          if(matchesParamType(params[sPos], splitString[i])){
+            ret.push(params[sPos]);
+            evaled++;
+            if(!sPas) evalF++;
+            else evalB++;
+          }else{
+            //Throw error
+            throw {
+              type : "MISMATCHED_PARAMETER",
+              mismatch : {
+                expected : splitString[i].toLowerCase()=="n"?"number":"word",
+                got : params[sPos]
+              }
+            };
+          }
         }else{
-          //Incorrect parameter type, throw error
-          throw {
-            type : "MISMATCHED_PARAMETER",
-            mismatch : {
-              expected : splitString[i].toLowerCase()=="n"?"Number":"Word",
-              got : params[i]
+          //Is opt, determine if process
+          if(opt>0 && (!sPas || aftS<=opt)){
+            //Process
+            //Total remainingOpt
+            if(matchesParamType(params[sPos], splitString[i])){
+              ret.push(params[sPos]);
+              evaled++;
+              if(!sPas) evalF++;
+              else evalB++;
+            }else{
+              //Throw error
+              throw {
+                type : "MISMATCHED_PARAMETER",
+                mismatch : {
+                  expected : splitString[i].toLowerCase()=="n"?"number":"word",
+                  got : params[sPos]
+                }
+              };
             }
-          };
+            opt--;
+          }
+          if(sPas) aftS--;
         }
-      }else if(splitString[i].toLowerCase()=="s"){
-        //Reverse params and splitString
-        rev = true;
-        params = params.reverse();
-        splitString = splitString.split("").reverse().join("");
-        i=-1;
-      }
+      }else sPas = true;
     }
 
-    //Put ret and revRet together in order
-    ret = ret.concat(revRet.reverse());
-
-    params = params.reverse();
-    splitString = splitString.split("").reverse().join("");
-    rev = false;
-
-    //Evaluate optional params
-    for(let i=0;(i!=splitString.toLowerCase().indexOf("s")||!rev)&&i<splitString.length;i++){
-      if(splitString[i].toLowerCase()=="s"){
-        //Reverse params and splitString
-        rev = true;
-        params = params.reverse();
-        splitString = splitString.split("").reverse().join("");
-        i=-1;
-      }else if(splitString[i].toLowerCase() == splitString[i]){
-        if(matchesParamType(params[i],splitString[i])){
-          if(rev) ret = ret.slice(0,ret.length-i).concat([params[i]], ret.slice(ret.length-i));
-          else ret = ret.slice(0,i).concat([params[i]], ret.slice(i));
-          params[i] = "";
-          evaled++;
-        }else{
-          //Incorrect parameter type, throw error
-          throw {
-            type : "MISMATCHED_PARAMETER",
-            mismatch : {
-              expected : splitString[i].toLowerCase()=="n"?"Number":"Word",
-              got : params[i]
-            }
-          };
-        }
-      }
+    //Eval s
+    if(evaled<params.length && sInd != null){
+      //evalFront
+      console.log("S");
+      ret.splice(evalF, 0, params.slice(evalF, params.length-evalB).join(" "));
     }
-    //Evaluate s
-    if(params.length>evaled){
-      splitString = splitString.split("").reverse().join("");
-      params = params.reverse();
-      let sInd = splitString.toLowerCase().indexOf("s");
-      for(let i=0;i<params.length;i++){
-        if(params[i]==""){
-          params.splice(i,1);
-          i--;
-        }
-      }
-      ret = ret.slice(0,sInd).concat([params.join(" ")], ret.slice(sInd));
-    }
+
     return ret;
-
   }else{
-    //Not enough params given, throw error
+    //Throw insifficent params
     throw {
       type : "INSUFFICENT_PARAMETERS",
     };
@@ -135,6 +129,7 @@ function splitParameters(splitString, params){
 }
 
 function matchesParamType(param, type){
+  console.log(`p: ${param} t: ${type}`);
   switch(type.toLowerCase()){
     case "w":
       return /^[^\s]+$/.test(param);
@@ -146,12 +141,10 @@ function matchesParamType(param, type){
 }
 
 exports.runCommand = (message) => {
-  console.log("CONT " + message.content);
   if(message.content.startsWith(exports.DELIMITER)){
     let name = exports.findBestRawFit(message.content);
     if(name){
-      let text = message.content.substring(name.length+1);
-
+      let text = message.content.substring(name.length+exports.DELIMITER.length+1);
       //Execute command procedures
       try{
         commands[name].run(message, splitParameters(commands[name].params, text));
@@ -173,6 +166,7 @@ exports.runCommand = (message) => {
 }
 
 exports.findBestRawFit = (raw) => {
+  console.log(raw);
   if(raw.startsWith(exports.DELIMITER)){
     raw = raw.substring(exports.DELIMITER.length);
   }
@@ -226,7 +220,6 @@ addCommand("help", {
           }
         ]
       }});
-      // message.channel.send(`Help for \`${exports.DELIMITER}${params[0]}\`:\n*${commands[name].description}*\nFor information on how to use \`${exports.DELIMITER}${name}\`, use \`${exports.DELIMITER}help syntax ${name}\``);
     }else{
       message.channel.send({embed:{
         color : 12663844,
@@ -261,6 +254,8 @@ addCommand("syntax", {
   description : "Help syntax is a command to help you learn how to use certain commands by telling you what the parameters are and if they are optional or not",
   syntax : ["Command"]
 }, (message, params) => {
+  console.log("S");
+  console.log(params);
   let name = exports.findBestRawFit(params[0]);
   console.log(name);
   if(name){
@@ -292,4 +287,231 @@ addCommand("syntax", {
       ]
     }});
   }
+});
+
+addCommand("add", {
+  params : "WWS",
+  description : "Add is used for adding people to groups in the group list",
+  syntax : ["Person", "to", "Group"]
+}, (message, params) => {
+  let member = message.guild.fetchMember(params[0].match(/<@!?\d{18}>/)[1]);
+  let n = member.nickname?member.nickname:member.user.username;
+  switch(grp.addToGroup(member, params[1])){
+    case "SUCCESS":
+      message.channel.send({embed:{
+        color : 3196712,
+        title : "Added to group successfully",
+        fields : [
+          {
+            name : `${n} has been added to ${params[1]} successfully`,
+            value : `To remove from ${params[1]}, use \`${exports.DELIMITER}remove ${exports.syntaxOf("remove").slice(0,1).join(" ")} [${params[1]}]\``
+          }
+        ]
+      }});
+      break;
+    case "PRESENT":
+      message.channel.send({embed:{
+        color : 15583545,
+        title : "Error adding to group",
+        fields : [
+          {
+            name : `${n} is already in \`${params[1]}\``,
+            value : `${n} cannot be added to a group multiple times`
+          }
+        ]
+      }});
+      break;
+    case "NO_GROUP":
+      message.channel.send({embed:{
+        color : 12663844,
+        title : "Error adding to group",
+        fields : [
+          {
+            name : `\`${params[1]}\` is not a group`,
+            value : `${n} cannot be added to ${params[1]} because that group doesn't exist`
+          }
+        ]
+      }});
+      break;
+  }
+});
+
+addCommand("add group", {
+  params : "S",
+  description : "Add group is used for adding groups to the group list",
+  syntax : ["Group name"]
+}, (message, params) => {
+  switch(grp.addGroup(params[0])){
+    case "SUCCESS":
+      message.channel.send({embed:{
+        color : 3196712,
+        title : "Group added successfully",
+        fields : [
+          {
+            name : `\`${params[0]}\` has been created`,
+            value : `To add people to this group, use \`${exports.DELIMITER}add to group ${exports.syntaxOf("add to group").join(" ")}\``
+          }
+        ]
+      }});
+      break;
+    case "PRESENT":
+      grp.getGuild(message.guild).then((data) => {
+        let lead = data[params[0]].slice(0,3);
+        let fin = (data[params[0]].length>3?' ...':"");
+        message.channel.send({embed:{
+          color : 15583545,
+          title : "Error adding group",
+          fields : [
+            {
+              name : `\`${params[0]}\` already exists so it cannot be added`,
+              value : `\`${params[0]}\` includes \`<@!${lead.join("> <@!")}>${fin}\``
+            }
+          ]
+        }});
+      });
+      break;
+  }
+});
+
+addCommand("remove", {
+  params : "WWS",
+  description : "Remove is used for removing people to groups in the group list",
+  syntax : ["Person", "from", "Group"]
+}, (message, params) => {
+  let member = message.guild.fetchMember(params[0].match(/<@!?\d{18}>/)[1]);
+  let n = member.nickname?member.nickname:member.user.username;
+  switch(grp.removeFromGroup(member, params[1])){
+    case "SUCCESS":
+      message.channel.send({embed:{
+        color : 3196712,
+        title : "Removed from group successfully",
+        fields : [
+          {
+            name : `${n} has been removed from ${params[1]} successfully`,
+            value : `To add to ${params[1]}, use \`${exports.DELIMITER}add ${exports.syntaxOf("add").slice(0,1).join(" ")} [${params[1]}]\``
+          }
+        ]
+      }});
+      break;
+    case "ABSENT":
+      message.channel.send({embed:{
+        color : 15583545,
+        title : "Error removing from group",
+        fields : [
+          {
+            name : `${n} is not in \`${params[1]}\``,
+            value : `${n} cannot be removed from a group they are not in`
+          }
+        ]
+      }});
+      break;
+    case "NO_GROUP":
+      message.channel.send({embed:{
+        color : 12663844,
+        title : "Error removing from group",
+        fields : [
+          {
+            name : `\`${params[1]}\` is not a group`,
+            value : `${n} cannot be removed from ${params[1]} because that group doesn't exist`
+          }
+        ]
+      }});
+      break;
+  }
+});
+
+addCommand("remove group", {
+  params : "S",
+  description : "Remove group is used for removing groups to the group list",
+  syntax : ["Group name"]
+}, (message, params) => {
+  switch(grp.removeGroup(params[0])){
+    case "SUCCESS":
+      message.channel.send({embed:{
+        color : 3196712,
+        title : "Group removed successfully",
+        fields : [
+          {
+            name : `\`${params[0]}\` has been removed`,
+            value : "All users in this group have been removed from the group as well"
+          }
+        ]
+      }});
+      break;
+    case "PRESENT":
+      grp.getGuild(message.guild).then((data) => {
+        let lead = data[params[0]].slice(0,3);
+        message.channel.send({embed:{
+          color : 15583545,
+          title : "Error removing group",
+          fields : [
+            {
+              name : `\`${params[0]}\` doesn't exists so it cannot be removed`,
+              value : `To add this group, use \`${exorts.DELIMITER}add group ${params[0]}\``
+            }
+          ]
+        }});
+      });
+      break;
+  }
+});
+
+addCommand("list", {
+  params : "s",
+  description : "Gives a list of all the groups for the server or a specific group if given",
+  syntax : ["Group"]
+}, (message, params) => {
+  grp.getGuild(message.guild).then((data) => {
+    if(params.length===0){
+      message.channel.send({embed:{
+        color : 4223940,
+        title : "All groups",
+        fields : [
+          {
+            name : "List of all the groups in the server",
+            value : `\`${Object.keys(data).join("`, `")}\``
+          }
+        ]
+      }});
+    }else{
+      if(data[params[0]]){
+        let names = [];
+        let proms = [];
+        data[params[0]].forEach((v) => {
+          proms.push(message.guild.fetchMember(v).then((member) => {
+            names.push(member);
+          }).catch((err) => {
+            grp.removeFromGroup({
+              id : v,
+              guild : message.guild
+            });
+          }));
+        });
+        Promise.all(proms).then((res) => {
+          message.channel.send({embed:{
+            color : 4223940,
+            title : `${params[0]} group`,
+            fields : [
+              {
+                name : `List of all the users in ${params[0]}`,
+                value : `${names.join("`, `")}`
+              }
+            ]
+          }});
+        });
+      }else{
+        //Error for no group
+        message.channel.send({embed:{
+          color : 15583545,
+          title : "Error listing group",
+          fields : [
+            {
+              name : `\`${params[0]}\` doesn't exists so it cannot be listed`,
+              value : `To add this group, use \`${exorts.DELIMITER}add group ${params[0]}\``
+            }
+          ]
+        }});
+      }
+    }
+  });
 });

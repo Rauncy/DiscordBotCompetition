@@ -42,9 +42,6 @@ exports.getGuild = (guild) => {
       });
     }else{
       resolve(groups[guild.id]);
-      console.log("YA EX");
-      console.log(timeouts[guild.id].reset.toString());
-      console.log("G");
       timeouts[guild.id].reset();
     }
   });
