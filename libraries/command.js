@@ -310,24 +310,46 @@ addCommand("bestfit", {params : ""}, (message, params)=>{
     // Get all the games that all these players have
 
     var players = message.member.voiceChannel.members.keyArray();
-    var validGames = new Array();
-    console.log(arr);
+    var validGames = [];
+    console.log(players);
     grp.getGuild(message.guild).then((data)=>{
       Object.keys(data).forEach((g)=>{
         let ids = data[g];
         var everyPlayer = true;
         players.forEach((p)=>{
-          if (!g.includes(p)) {
+          if (!ids.includes(p)) {
             everyPlayer = false;
           }
         });
         if (everyPlayer) {
-          validGames.push(new Map([g, ids]));
+          var m = new Map();
+          m.set(g, ids);
+          console.log(m);
+          validGames.push(m);
         }
       });
-    });
+      console.log(validGames);
 
-    //Sorting games based on the least number of people who have them
+      //Sorting games based on the least number of people who have them
+      for (var o = 0; o < validGames.length; o++) {
+        for (var i = o + 1; i < validGames.length; i++) {
+          if (validGames[i].values().next().value.length < validGames[o].values().next().value.length) {
+            var temp = validGames[i];
+            validGames[i] = validGames[o];
+            validGames[o] = temp;
+          }
+        }
+      }
+      console.log(validGames);
+
+      var str = "Your Best Fit Games\n";
+      for (var i = 0; i < validGames.length; i++) {
+        var count;
+        str += (i + 1) + ". " + validGames[i].keys().next().value + "\n";
+      }
+
+      message.channel.send(str);
+    }).catch((err)=>{console.error(err);});
 
   }
   else {
