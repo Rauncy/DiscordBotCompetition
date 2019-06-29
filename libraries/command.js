@@ -1,9 +1,10 @@
 const grp = require("../libraries/group.js");
+const api = require("../libraries/api.js");
 
 //Commands is organized by {name:{syntax, description, params, function}}
 var commands = {};
 
-exports.DELIMITER = "!";
+exports.DELIMITER = ".";
 
 /*
 Key for splitting paramaters
@@ -576,5 +577,35 @@ addCommand("list", {
         }});
       }
     }
+  });
+});
+
+addCommand("add steam id", {
+  params : "SN",
+  syntax : ["Group", "Steam App ID"],
+  description : "Associates a Steam ID with a group for auto-integration"
+}, (message, params) => {
+  
+});
+
+addCommand("a", {
+  params : "S",
+  description : "",
+  syntax : ["Steam Profile URL"]
+}, (message, params) => {
+  grp.getSteamID64(params[0]).then(id => {
+    grp.getGames(id).then(games => {
+      games = games.slice(0,5);
+      let ret = "Top 5 games:";
+      let names = [];
+      games.forEach(v => {
+        names.push(grp.getGameName(v.appid).then(name => {
+          ret+=("\n"+name+": "+Math.floor(v.playtime_forever/60)+"hours");
+        }));
+      });
+      Promise.all(names).then(() => {
+        message.channel.send(ret);
+      });
+    });
   });
 });
