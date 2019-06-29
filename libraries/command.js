@@ -412,7 +412,8 @@ addCommand("add group", {
     switch(d.status){
       case "SUCCESS":
         //add message to registry
-        message.guild.channels.find('name', 'bestfit-registry').send(params[0]);
+        try{message.guild.channels.find('name', 'bestfit-registry').send(params[0]);}
+        catch(e){}
 
         message.channel.send({embed:{
           color : 3196712,
@@ -504,9 +505,10 @@ addCommand("remove group", {
     switch(d.status){
       case "SUCCESS":
         //remove message from registry
-        message.guild.channels.find('name', 'bestfit-registry').fetchMessages().then((messages) => {
+        try{message.guild.channels.find('name', 'bestfit-registry').fetchMessages().then((messages) => {
           messages.find('content', params[0]).delete();
-        });
+        });}
+        catch(e){}
 
         message.channel.send({embed:{
           color : 3196712,
@@ -635,34 +637,14 @@ addCommand("initialize", {
 
 exports.setupListeners = ()=>{
   const bot = require("../bot.js");
+  const djs = require("discord.js");
 
   const events = {
-  	MESSAGE_REACTION_ADD: 'messageReactionAdd',
-  	MESSAGE_REACTION_REMOVE: 'messageReactionRemove',
+  	MESSAGE_REACTION_ADD: 'messageReactionAddCustom',
+  	MESSAGE_REACTION_REMOVE: 'messageReactionRemoveCustom'
   };
 
-  bot.bot.on('raw', async event => {
-  	if (!events.hasOwnProperty(event.t)) return;
-
-  	var { d: data } = event;
-  	var user = bot.bot.users.get(data.user_id);
-  	var channel = bot.bot.channels.get(data.channel_id) || await user.createDM();
-
-  	if (channel.messages.has(data.message_id)) return;
-
-  	var message = await channel.fetchMessage(data.message_id);
-  	var emojiKey = (data.emoji.id) ? `${data.emoji.name}:${data.emoji.id}` : data.emoji.name;
-  	let reaction = message.reactions.get(emojiKey);
-
-  	if (!reaction) {
-  		const emoji = new Discord.Emoji(bot.bot.guilds.get(data.guild_id), data.emoji);
-  		reaction = new Discord.MessageReaction(message, emoji, 1, data.user_id === bot.bot.user.id);
-  	}
-
-  	bot.bot.emit(events[event.t], reaction, user);
-  });
-
-  bot.bot.on("messageReactionAdd", (reaction, user) => {
+  bot.bot.on("messageReactionAddCustom", (reaction, user) => {
     grp.getGuild(reaction.message.guild).then((data) => {
       Object.keys(data).forEach((game) => {
         if (reaction.message == game && reaction.message.channel.name == "bestfit-registry") {
@@ -671,6 +653,41 @@ exports.setupListeners = ()=>{
         }
       });
     });
+  });
+
+  bot.bot.on("messageReactionRemoveCustom", (reaction, user) => {
+    //console.log("reaction remvoed");
+    grp.getGuild(reaction.message.guild).then((data) => {
+      Object.keys(data).forEach((game) => {
+        if (reaction.message == game && reaction.message.channel.name == "bestfit-registry") {
+          grp.removeFromGroup(reaction.message.guild.member(user), game);
+          user.send("Removed you from " + game);
+        }
+      });
+    });
+  });
+
+  bot.bot.on('raw', async event => {
+    //console.log(event.t);
+  	if (!events.hasOwnProperty(event.t)) return;
+
+  	var { d: data } = event;
+  	var user = bot.bot.users.get(data.user_id);
+  	var channel = bot.bot.channels.get(data.channel_id) || await user.createDM();
+
+  	//if (channel.messages.has(data.message_id)) return;
+
+  	var message = await channel.fetchMessage(data.message_id);
+  	var emojiKey = (data.emoji.id) ? `${data.emoji.name}:${data.emoji.id}` : data.emoji.name;
+  	let reaction = message.reactions.get(emojiKey);
+
+  	if (!reaction) {
+      //console.log("!reaction");
+  		const emoji = new djs.Emoji(bot.bot.guilds.get(data.guild_id), data.emoji);
+  		reaction = new djs.MessageReaction(message, emoji, 1, data.user_id === bot.bot.user.id);
+  	}
+    //console.log(events[event.t] + "," + reaction + "," + user);
+  	bot.bot.emit(events[event.t], reaction, user);
   });
 
 }
