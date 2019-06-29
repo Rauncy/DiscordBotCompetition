@@ -675,31 +675,61 @@ exports.setupListeners = ()=>{
   });
 
 }
-addCommand("add steam id", {
-  params : "SN",
-  syntax : ["Group", "Steam App ID"],
+addCommand("associate", {
+  params : "SWN",
+  syntax : ["Group", "with", "Steam App ID"],
   description : "Associates a Steam ID with a group for auto-integration"
 }, (message, params) => {
-
+  grp.associateGame(params[0], message.guild, params[2]).then(res => {
+    switch(res.status){
+      case "SUCCESS":
+        // grp.getGameName(params[1]).then(data => {
+          message.channel.send({embed:{
+            color : 3196712,
+            title : "Group associated successfully",
+            fields : [
+              {
+                name : `\`${params[0]}\` has been associated to ${params[2]}`,
+                value : `To reassociate this group, run this command again`
+              }
+            ]
+          }});
+        // });
+        break;
+      case "NO_GROUP":
+        message.channel.send({embed:{
+          color : 12663844,
+          title : "Error associating from group",
+          fields : [
+            {
+              name : `\`${params[0]}\` is not a group`,
+              value : `${params[0]} cannot be associated because that group doesn't exist`
+            }
+          ]
+        }});
+        break;
+    }
+  });
 });
 
-addCommand("a", {
+addCommand("profile", {
   params : "S",
-  description : "",
+  description : "Adds the steam games of the user to all associated mentions from a steam profile URL",
   syntax : ["Steam Profile URL"]
 }, (message, params) => {
   grp.getSteamID64(params[0]).then(id => {
     grp.getGames(id).then(games => {
-      games = games.slice(0,5);
-      let ret = "Top 5 games:";
-      let names = [];
-      games.forEach(v => {
-        names.push(grp.getGameName(v.appid).then(name => {
-          ret+=("\n"+name+": "+Math.floor(v.playtime_forever/60)+"hours");
-        }));
-      });
-      Promise.all(names).then(() => {
-        message.channel.send(ret);
+      grp.addUserWSteam(message.member, games).then(a => {
+        message.channel.send({embed:{
+          color : 3196712,
+          title : "Profile added successfully",
+          fields : [
+            {
+              name : `Your steam profile has been added to associated groups succesfully`,
+              value : `You have been added to ${a} group(s)`
+            }
+          ]
+        }});
       });
     });
   });

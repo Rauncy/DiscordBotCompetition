@@ -83,7 +83,7 @@ bot.on("message", (message) => {
 });
 
 bot.on("guildCreate", (guild) => {
-  fs.writeFile(`./data/guilds/${guild.id}.json`, "{}", (err) => {
+  fs.writeFile(`./data/guilds/${guild.id}.json`, "{\"groups\":{},\"steam\":{}}", (err) => {
     console.log("Started groups for guild " + guild.id);
   });
 });
