@@ -1,4 +1,5 @@
 const https = require("https");
+const http = require("http");
 const fs = require("fs")
 const apis = require("./api.js");
 
@@ -51,8 +52,9 @@ exports.getUser = (user) => {
   return new Promise(function(resolve, reject) {
     if(!users[user.id]){
       fs.readFile(`./data/users/${user.id}.json`, (err, data) => {
-        if(err) resolve({});
-        else{
+        if(err){
+          reject("NO_USER");
+        }else{
           let g = JSON.parse(data);
           resolve(g);
           users[user.id] = g;
@@ -81,8 +83,14 @@ exports.saveGuild = (guild, keep = true) => {
   });
 };
 
-exports.autoAddToGroups = (member) => {
-  //Uses oauth2 connections to get the steam account and add to user
+exports.saveUser = (user, keep = true) => {
+  fs.writeFile(`../data/users/${user.id}.json`, JSON.stringify(users[user.id]), () => {
+    if(!keep){
+      let t = timeouts[user.id];
+      t.time = 0;
+      t.reset();
+    }
+  });
 };
 
 exports.addToGroup = async (member, group) => {
@@ -177,3 +185,78 @@ exports.removeGroup = async (guild, group) => {
     });
   });
 }
+
+exports.getSteamID64 = async (steamURL) => {
+  //run post https://steamid.io/lookup?input=
+  //https://steamcommunity.com/id/rauncy/
+  return new Promise(function(resolve, reject) {
+    let p = steamURL.match(/steamcommunity\.com\/(.+)\/?/)[1];
+    var req = https.request(steamURL, (res) => {
+
+      res.on('data', (d) => {
+        //"steamid":"(\d+)"
+        let str = d.toString().match(/"steamid":"(\d+)"/);
+        if(str){
+          resolve(str[1]);
+        }
+      });
+    });
+
+    req.on('error', (e) => {
+      console.error(e);
+    });
+
+    req.write("");
+    req.end();
+  });
+};
+
+exports.getGames = (steamID) => {
+  return new Promise(function(resolve, reject) {
+    apis.getKey("steamAPI").then((key) => {
+      console.log(key);
+      let req = http.request(`http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${key}&steamid=${steamID}&format=json`, (res) => {
+        res.on('data', (d) => {
+          //"steamid":"(\d+)"
+          let obj = JSON.parse(d.toString()).response;
+          let games = obj.games;
+          games.sort((a, b) => {
+            return (a.playtime_forever - b.playtime_forever)>0?-1:1;
+          });
+          resolve(games);
+        });
+      });
+
+      req.on('error', (e) => {
+        console.error(e);
+      });
+
+      req.write("");
+      req.end();
+    });
+  });
+};
+
+// exports.getGameName = (gameID) => {
+//   return new Promise(function(resolve, reject) {
+//     apis.getKey("steamAPI").then((key) => {
+//       console.log(key);
+//       let req = http.request(`http://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=${key}&appid=${gameID}`, (res) => {
+//         res.on('data', (d) => {
+//           //"steamid":"(\d+)"
+//           console.log(d.toString());
+//           let ret = JSON.parse(d.toString()).game.gameName;
+//           console.log(ret);
+//           resolve(ret);
+//         });
+//       });
+//
+//       req.on('error', (e) => {
+//         console.error(e);
+//       });
+//
+//       req.write("");
+//       req.end();
+//     });
+//   });
+// };
