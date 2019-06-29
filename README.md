@@ -16,25 +16,25 @@ Or you can join our server to test the bot out for yourself:
 
 ---
 ## Commands
-- `!initialize`
+- `.initialize`
     - Automatically creates a new text channel for use with the bot. This is where you will interact with emoji reactions to tell the bot what games you own.
-- `!bestfit`
+- `.bestfit`
     - Finds the game that is the best fit for the people currently in your voice channel.
-- `!list`
+- `.list`
     - Outputs a list of the different groups into the chat.
-- `!help [command]`
+- `.help [command]`
     - Tell you to what each command the bot has to offer does and how to use them.  
-- `!syntax [command]`
+- `.syntax [command]`
     - Tells you how to use certain commands by telling the parameters and if they are optional or not.
-- `!add [@person] to [groupname]`
+- `.add [@person] to [groupname]`
     - Adds a person to a group manually.
-- `!add group [groupname]`
+- `.add group [groupname]`
     - Creates a new group.
-- `!remove [@person] from [groupname]`
+- `.remove [@person] from [groupname]`
     - Removes a person from a group manually.
-- `!remove group [groupname]`
+- `.remove group [groupname]`
     - Removes a group.
-
+    
 ## Future Changes
 
 The bot is currently in working fashion but in the future we would like to add compatibility with more game platforms so that users don't have to manually add themselves to groups they have the games for. Also group consistency across servers where the user's groups are the same in every server is another goal we are pursuing.
