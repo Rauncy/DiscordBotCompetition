@@ -290,7 +290,9 @@ addCommand("syntax", {
   }
 });
 
-addCommand("bestfit", {params : ""}, (message, params)=>{
+addCommand("bestfit", {params : "",
+syntax : [],
+description : "Finds the best fitting group for the voice chat the user is in"}, (message, params)=>{
   /*message.author.client.broadcasts.forEach((key, value, map) => {
     console.log(key + " " + value);
   });*/
