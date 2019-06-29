@@ -3,7 +3,7 @@ const grp = require("../libraries/group.js");
 //Commands is organized by {name:{syntax, description, params, function}}
 var commands = {};
 
-exports.DELIMITER = ".";
+exports.DELIMITER = "!";
 
 /*
 Key for splitting paramaters
@@ -411,6 +411,9 @@ addCommand("add group", {
   grp.addGroup(message.guild, params[0]).then((d) => {
     switch(d.status){
       case "SUCCESS":
+        //add message to registry
+        message.guild.channels.find('name', 'bestfit-registry').send(params[0]);
+
         message.channel.send({embed:{
           color : 3196712,
           title : "Group added successfully",
@@ -500,6 +503,11 @@ addCommand("remove group", {
   grp.removeGroup(message.guild, params[0]).then((d) => {
     switch(d.status){
       case "SUCCESS":
+        //remove message from registry
+        message.guild.channels.find('name', 'bestfit-registry').fetchMessages().then((messages) => {
+          messages.find('content', params[0]).delete();
+        });
+
         message.channel.send({embed:{
           color : 3196712,
           title : "Group removed successfully",
@@ -590,22 +598,9 @@ addCommand("list", {
   });
 });
 
-addCommand("register", {
-  params : "s",
-  description : "Help is a command to tell you to what each command the bot has to offer does and how to use them.",
-  syntax : ["Command"]
-}, (message, params) => {
-  message.author.send("Hello and welcome to the BestFit Bot.");
-  grp.getGuild(message.guild).then((data) => {
-    console.log(data);
-    message.author.send(`The games currently registered on this server include:\n` + Object.keys(data).join("`, `"));
-    message.author.send("If you give me a link to your Steam profile I can automatically add you to groups based on games you own.\nOtherwise you can select them manually by saying \'manual\'.");
-  });
-});
-
 addCommand("initialize", {
   params : "s",
-  description : "Help is a command to tell you to what each command the bot has to offer does and how to use them.",
+  description : "Initialize is a command that creates a #bestfit-registry channel for use with the `!bestfit` command.",
   syntax : ["Command"]
 }, (message, params) => {
   var server = message.guild;
@@ -621,67 +616,61 @@ addCommand("initialize", {
     }]
   };
 
-  server.createChannel(name, obj).then((channel) => {
-    grp.getGuild(message.guild).then((data) => {
-      console.log(data);
-      channel.send("If you give me a link to your Steam profile I can automatically add you to groups based on games you own.\nOtherwise you can select them manually by reacting to their message.");
-      channel.send(`The games currently registered on this server include:`);
-      Object.keys(data).forEach((game) => {
-        channel.send(game);
+  if (server.channels.find('name', 'bestfit-registry') == null) {
+    server.createChannel(name, obj).then((channel) => {
+      grp.getGuild(message.guild).then((data) => {
+        console.log(data);
+        channel.send("If you give me a link to your Steam profile I can automatically add you to groups based on games you own.\nOtherwise you can select them manually by reacting to their message.");
+        channel.send(`The games currently registered on this server include:`);
+        Object.keys(data).forEach((game) => {
+          channel.send(game);
+        });
       });
     });
-  });
+  }
+  else {
+    message.channel.send("That channel already exists!");
+  }
 });
 
 exports.setupListeners = ()=>{
   const bot = require("../bot.js");
+
+  const events = {
+  	MESSAGE_REACTION_ADD: 'messageReactionAdd',
+  	MESSAGE_REACTION_REMOVE: 'messageReactionRemove',
+  };
+
+  bot.bot.on('raw', async event => {
+  	if (!events.hasOwnProperty(event.t)) return;
+
+  	var { d: data } = event;
+  	var user = bot.bot.users.get(data.user_id);
+  	var channel = bot.bot.channels.get(data.channel_id) || await user.createDM();
+
+  	if (channel.messages.has(data.message_id)) return;
+
+  	var message = await channel.fetchMessage(data.message_id);
+  	var emojiKey = (data.emoji.id) ? `${data.emoji.name}:${data.emoji.id}` : data.emoji.name;
+  	let reaction = message.reactions.get(emojiKey);
+
+  	if (!reaction) {
+  		const emoji = new Discord.Emoji(bot.bot.guilds.get(data.guild_id), data.emoji);
+  		reaction = new Discord.MessageReaction(message, emoji, 1, data.user_id === bot.bot.user.id);
+  	}
+
+  	bot.bot.emit(events[event.t], reaction, user);
+  });
+
   bot.bot.on("messageReactionAdd", (reaction, user) => {
     grp.getGuild(reaction.message.guild).then((data) => {
       Object.keys(data).forEach((game) => {
         if (reaction.message == game && reaction.message.channel.name == "bestfit-registry") {
-          console.log(reaction.message.guild.member(user) + game);
-          var message = reaction.message;
-          switch(grp.addToGroup(reaction.message.guild.member(user), game)){
-            case "SUCCESS":
-              message.channel.send({embed:{
-                color : 3196712,
-                title : "Added to group successfully",
-                fields : [
-                  {
-                    name : `${n} has been added to ${params[1]} successfully`,
-                    value : `To remove from ${params[1]}, use \`${exports.DELIMITER}remove ${exports.syntaxOf("remove").slice(0,1).join(" ")} [${params[1]}]\``
-                  }
-                ]
-              }});
-              break;
-            case "PRESENT":
-              message.channel.send({embed:{
-                color : 15583545,
-                title : "Error adding to group",
-                fields : [
-                  {
-                    name : `${n} is already in \`${params[1]}\``,
-                    value : `${n} cannot be added to a group multiple times`
-                  }
-                ]
-              }});
-              break;
-            case "NO_GROUP":
-              message.channel.send({embed:{
-                color : 12663844,
-                title : "Error adding to group",
-                fields : [
-                  {
-                    name : `\`${params[1]}\` is not a group`,
-                    value : `${n} cannot be added to ${params[1]} because that group doesn't exist`
-                  }
-                ]
-              }});
-              break;
-          }
+          grp.addToGroup(reaction.message.guild.member(user), game);
           user.send("Added you to " + game);
         }
       });
     });
   });
+
 }
