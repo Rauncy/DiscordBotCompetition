@@ -70,7 +70,9 @@ exports.getUser = (user) => {
 };
 
 exports.saveGuild = (guild, keep = true) => {
-  fs.writeFile(`../data/guilds/${guild.id}.json`, JSON.stringify(guilds[guild.id]), () => {
+  fs.writeFile(`./data/guilds/${guild.id}.json`, JSON.stringify(groups[guild.id]), (err) => {
+    if(err) console.error(err);
+    console.log(`Guild ${guild.id} saved`);
     if(!keep){
       let t = timeouts[guild.id];
       t.time = 0;
@@ -83,84 +85,95 @@ exports.autoAddToGroups = (member) => {
   //Uses oauth2 connections to get the steam account and add to user
 };
 
-exports.addToGroup = (member, group) => {
-  exports.getGuild(member.guild.id).then((data) => {
-    if(data[group]){
-      //Group exists
-      if(data[group].includes(member.id)){
-        //Already is in group
-        return {
+exports.addToGroup = async (member, group) => {
+  return new Promise(function(resolve, reject) {
+    exports.getGuild(member.guild).then((data) => {
+      if(data[group]){
+        //Group exists
+        if(data[group].includes(member.id)){
+          //Already is in group
+          resolve({
+            status : "PRESENT"
+          });
+        }else{
+          groups[member.guild.id][group].push(member.id);
+          exports.saveGuild(member.guild);
+          resolve({
+            status : "SUCCESS"
+          });
+        }
+      }else{
+        //Group doesn't exists
+        resolve({
+          status : "NO_GROUP",
+          name : group
+        });
+      }
+    });
+  });
+};
+
+exports.removeFromGroup = async (member, group) => {
+  return new Promise(function(resolve, reject) {
+    exports.getGuild(member.guild).then((data) => {
+      if(data[group]){
+        //Group exists
+        if(data[group].includes(member.id)){
+          //Is in group
+          groups[member.guild.id][group].splice(data[group].indexOf(member.id), 1);
+          exports.saveGuild(member.guild);
+          resolve({
+            status : "SUCCESS"
+          });
+        }else{
+          resolve({
+            status : "ABSENT"
+          });
+        }
+      }else{
+        //Group doesn't exists
+        resolve({
+          status : "NO_GROUP",
+          name : group
+        });
+      }
+    });
+  });
+};
+
+exports.addGroup = async (guild, group) => {
+  return new Promise((resolve, reject) => {
+    exports.getGuild(guild).then((data) => {
+      if(!data[group]){
+        groups[guild.id][group] = [];
+        exports.saveGuild(guild);
+        resolve({
+          status : "SUCCESS"
+        });
+      }else{
+        console.log("NOP");
+        resolve({
           status : "PRESENT"
-        }
-      }else{
-        data[group].push(member.id);
-        exports.saveGuild(member.guild.id);
-        return {
-          status : "SUCCESS"
-        }
+        });
       }
-    }else{
-      //Group doesn't exists
-      return {
-        status : "NO_GROUP",
-        name : group
-      }
-    }
+    });
   });
 };
 
-exports.removeFromGroup = (member, group) => {
-  exports.getGuild(member.guild.id).then((data) => {
-    if(data[group]){
-      //Group exists
-      if(data[group].includes(member.id)){
-        //Is in group
-        data[group].splice(data[group].indexOf(member.id), 1);
-        exports.saveGuild(member.guild.id);
-        return {
+exports.removeGroup = async (guild, group) => {
+  return new Promise(function(resolve, reject) {
+    exports.getGuild(guild).then((data) => {
+      if(data[group]){
+        delete groups[guild.id][group];
+        exports.saveGuild(guild);
+        resolve({
           status : "SUCCESS"
-        }
+        });
       }else{
-        return {
+        resolve({
           status : "ABSENT"
-        }
+        });
       }
-    }else{
-      //Group doesn't exists
-      return {
-        status : "NO_GROUP",
-        name : group
-      }
-    }
-  });
-};
-
-exports.addGroup = (guild, group) => {
-  exports.getGuild(guild.id).then((data) => {
-    if(!data[group]){
-      data[group] = [];
-      return {
-        status : "SUCCESS"
-      }
-    }else{
-      return {
-        status : "PRESENT"
-      }
-    }
-  });
-};
-
-exports.removeGroup = (guild, group) => {
-  exports.getGuild(guild.id).then((data) => {
-    if(data[group]){
-      delete data[group];
-      return {
-        status : "SUCCESS"
-      }
-    }else{
-      return {
-        status : "ABSENT"
-      }
-    }
+    });
   });
 }

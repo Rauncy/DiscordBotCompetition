@@ -3,7 +3,7 @@ const grp = require("../libraries/group.js");
 //Commands is organized by {name:{syntax, description, params, function}}
 var commands = {};
 
-exports.DELIMITER = "!";
+exports.DELIMITER = ".";
 
 /*
 Key for splitting paramaters
@@ -357,46 +357,50 @@ addCommand("add", {
   description : "Add is used for adding people to groups in the group list",
   syntax : ["Person", "to", "Group"]
 }, (message, params) => {
-  let member = message.guild.fetchMember(params[0].match(/<@!?\d{18}>/)[1]);
-  let n = member.nickname?member.nickname:member.user.username;
-  switch(grp.addToGroup(member, params[1])){
-    case "SUCCESS":
-      message.channel.send({embed:{
-        color : 3196712,
-        title : "Added to group successfully",
-        fields : [
-          {
-            name : `${n} has been added to ${params[1]} successfully`,
-            value : `To remove from ${params[1]}, use \`${exports.DELIMITER}remove ${exports.syntaxOf("remove").slice(0,1).join(" ")} [${params[1]}]\``
-          }
-        ]
-      }});
-      break;
-    case "PRESENT":
-      message.channel.send({embed:{
-        color : 15583545,
-        title : "Error adding to group",
-        fields : [
-          {
-            name : `${n} is already in \`${params[1]}\``,
-            value : `${n} cannot be added to a group multiple times`
-          }
-        ]
-      }});
-      break;
-    case "NO_GROUP":
-      message.channel.send({embed:{
-        color : 12663844,
-        title : "Error adding to group",
-        fields : [
-          {
-            name : `\`${params[1]}\` is not a group`,
-            value : `${n} cannot be added to ${params[1]} because that group doesn't exist`
-          }
-        ]
-      }});
-      break;
-  }
+  params.splice(1,0);
+  let member = message.guild.fetchMember(params[0].match(/<@!?(\d{18})>/)[1]).then((member)=>{
+    let n = member.nickname?member.nickname:member.user.username;
+    grp.addToGroup(member, params[2]).then((d)=>{
+      switch(d.status){
+        case "SUCCESS":
+          message.channel.send({embed:{
+            color : 3196712,
+            title : "Added to group successfully",
+            fields : [
+              {
+                name : `${n} has been added to ${params[2]} successfully`,
+                value : `To remove from ${params[2]}, use \`${exports.DELIMITER}remove ${exports.syntaxOf("remove").slice(0,1).join(" ")} [${params[2]}]\``
+              }
+            ]
+          }});
+          break;
+        case "PRESENT":
+          message.channel.send({embed:{
+            color : 15583545,
+            title : "Error adding to group",
+            fields : [
+              {
+                name : `${n} is already in \`${params[2]}\``,
+                value : `${n} cannot be added to a group multiple times`
+              }
+            ]
+          }});
+          break;
+        case "NO_GROUP":
+          message.channel.send({embed:{
+            color : 12663844,
+            title : "Error adding to group",
+            fields : [
+              {
+                name : `\`${params[2]}\` is not a group`,
+                value : `${n} cannot be added to ${params[2]} because that group doesn't exist`
+              }
+            ]
+          }});
+          break;
+        }
+    });
+  });
 });
 
 addCommand("add group", {
@@ -404,36 +408,38 @@ addCommand("add group", {
   description : "Add group is used for adding groups to the group list",
   syntax : ["Group name"]
 }, (message, params) => {
-  switch(grp.addGroup(params[0])){
-    case "SUCCESS":
-      message.channel.send({embed:{
-        color : 3196712,
-        title : "Group added successfully",
-        fields : [
-          {
-            name : `\`${params[0]}\` has been created`,
-            value : `To add people to this group, use \`${exports.DELIMITER}add to group ${exports.syntaxOf("add to group").join(" ")}\``
-          }
-        ]
-      }});
-      break;
-    case "PRESENT":
-      grp.getGuild(message.guild).then((data) => {
-        let lead = data[params[0]].slice(0,3);
-        let fin = (data[params[0]].length>3?' ...':"");
+  grp.addGroup(message.guild, params[0]).then((d) => {
+    switch(d.status){
+      case "SUCCESS":
         message.channel.send({embed:{
-          color : 15583545,
-          title : "Error adding group",
+          color : 3196712,
+          title : "Group added successfully",
           fields : [
             {
-              name : `\`${params[0]}\` already exists so it cannot be added`,
-              value : `\`${params[0]}\` includes \`<@!${lead.join("> <@!")}>${fin}\``
+              name : `\`${params[0]}\` has been created`,
+              value : `To add people to this group, use \`${exports.DELIMITER}add to group ${exports.syntaxOf("add").join(" ")}\``
             }
           ]
         }});
-      });
-      break;
-  }
+        break;
+      case "PRESENT":
+        grp.getGuild(message.guild).then((data) => {
+          let lead = data[params[0]].slice(0,3);
+          let fin = (data[params[0]].length>3?' ...':"");
+          message.channel.send({embed:{
+            color : 15583545,
+            title : "Error adding group",
+            fields : [
+              {
+                name : `\`${params[0]}\` already exists so it cannot be added`,
+                value : `\`${params[0]}\` includes <@${lead.join("> <@")}>${fin}`
+              }
+            ]
+          }});
+        });
+        break;
+    }
+  });
 });
 
 addCommand("remove", {
@@ -441,46 +447,49 @@ addCommand("remove", {
   description : "Remove is used for removing people to groups in the group list",
   syntax : ["Person", "from", "Group"]
 }, (message, params) => {
-  let member = message.guild.fetchMember(params[0].match(/<@!?\d{18}>/)[1]);
-  let n = member.nickname?member.nickname:member.user.username;
-  switch(grp.removeFromGroup(member, params[1])){
-    case "SUCCESS":
-      message.channel.send({embed:{
-        color : 3196712,
-        title : "Removed from group successfully",
-        fields : [
-          {
-            name : `${n} has been removed from ${params[1]} successfully`,
-            value : `To add to ${params[1]}, use \`${exports.DELIMITER}add ${exports.syntaxOf("add").slice(0,1).join(" ")} [${params[1]}]\``
-          }
-        ]
-      }});
-      break;
-    case "ABSENT":
-      message.channel.send({embed:{
-        color : 15583545,
-        title : "Error removing from group",
-        fields : [
-          {
-            name : `${n} is not in \`${params[1]}\``,
-            value : `${n} cannot be removed from a group they are not in`
-          }
-        ]
-      }});
-      break;
-    case "NO_GROUP":
-      message.channel.send({embed:{
-        color : 12663844,
-        title : "Error removing from group",
-        fields : [
-          {
-            name : `\`${params[1]}\` is not a group`,
-            value : `${n} cannot be removed from ${params[1]} because that group doesn't exist`
-          }
-        ]
-      }});
-      break;
-  }
+  message.guild.fetchMember(params[0].match(/<@!?(\d{18})>/)[1]).then((member) => {
+    let n = member.nickname?member.nickname:member.user.username;
+    grp.removeFromGroup(member, params[2]).then((d) => {
+      switch(d.status){
+        case "SUCCESS":
+          message.channel.send({embed:{
+            color : 3196712,
+            title : "Removed from group successfully",
+            fields : [
+              {
+                name : `${n} has been removed from ${params[2]} successfully`,
+                value : `To add to ${params[2]}, use \`${exports.DELIMITER}add ${exports.syntaxOf("add").slice(0,1).join(" ")} ${params[2]}\``
+              }
+            ]
+          }});
+          break;
+        case "ABSENT":
+          message.channel.send({embed:{
+            color : 15583545,
+            title : "Error removing from group",
+            fields : [
+              {
+                name : `${n} is not in \`${params[2]}\``,
+                value : `${n} cannot be removed from a group they are not in`
+              }
+            ]
+          }});
+          break;
+        case "NO_GROUP":
+          message.channel.send({embed:{
+            color : 12663844,
+            title : "Error removing from group",
+            fields : [
+              {
+                name : `\`${params[2]}\` is not a group`,
+                value : `${n} cannot be removed from ${params[2]} because that group doesn't exist`
+              }
+            ]
+          }});
+          break;
+      }
+    });
+  });
 });
 
 addCommand("remove group", {
@@ -488,35 +497,37 @@ addCommand("remove group", {
   description : "Remove group is used for removing groups to the group list",
   syntax : ["Group name"]
 }, (message, params) => {
-  switch(grp.removeGroup(params[0])){
-    case "SUCCESS":
-      message.channel.send({embed:{
-        color : 3196712,
-        title : "Group removed successfully",
-        fields : [
-          {
-            name : `\`${params[0]}\` has been removed`,
-            value : "All users in this group have been removed from the group as well"
-          }
-        ]
-      }});
-      break;
-    case "PRESENT":
-      grp.getGuild(message.guild).then((data) => {
-        let lead = data[params[0]].slice(0,3);
+  grp.removeGroup(message.guild, params[0]).then((d) => {
+    switch(d.status){
+      case "SUCCESS":
         message.channel.send({embed:{
-          color : 15583545,
-          title : "Error removing group",
+          color : 3196712,
+          title : "Group removed successfully",
           fields : [
             {
-              name : `\`${params[0]}\` doesn't exists so it cannot be removed`,
-              value : `To add this group, use \`${exorts.DELIMITER}add group ${params[0]}\``
+              name : `\`${params[0]}\` has been removed`,
+              value : "All users in this group have been removed from the group as well"
             }
           ]
         }});
-      });
-      break;
-  }
+        break;
+      case "PRESENT":
+        grp.getGuild(message.guild).then((data) => {
+          let lead = data[params[0]].slice(0,3);
+          message.channel.send({embed:{
+            color : 15583545,
+            title : "Error removing group",
+            fields : [
+              {
+                name : `\`${params[0]}\` doesn't exists so it cannot be removed`,
+                value : `To add this group, use \`${exorts.DELIMITER}add group ${params[0]}\``
+              }
+            ]
+          }});
+        });
+        break;
+    }
+  });
 });
 
 addCommand("list", {
