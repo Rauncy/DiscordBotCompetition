@@ -164,3 +164,29 @@ exports.removeGroup = (guild, group) => {
     }
   });
 }
+
+exports.getSteamID64 = async (steamURL) => {
+  //run post https://steamid.io/lookup?input=
+  //https://steamcommunity.com/id/rauncy/
+  let steamID = steamURL.match(/https?:\/\/steamcommunity.com\/id\/(\w+)\/?/)[1];
+  console.log(steamID);
+  var req = https.request({
+    hostname: 'steamid.io',
+    port: 443,
+    path: `/lookup?input=${steamID}`,
+    method: 'POST'
+  }, (res) => {
+    console.log(`stat: ${res.statusCode}`)
+
+    res.on('data', (d) => {
+      console.log(d.toString().match(/value="(\d+)"/)[1]);
+    })
+  });
+
+  req.on('error', (e) => {
+    console.error(e)
+  });
+
+  req.write("");
+  req.end();
+};
