@@ -9,8 +9,10 @@ const rl = readline.createInterface({
   output : process.stdout
 });
 const bot = new djs.Client();
+exports.bot = bot;
 
 bot.on("ready", ()=>{
+  comms.setupListeners();
   bot.user.setPresence({
     status : "online",
     game : {
@@ -22,6 +24,9 @@ bot.on("ready", ()=>{
 });
 
 bot.on("message", (message) => {
+  if (message.channel.type == "dm" && message.author.bot != true) {
+    //insert code to read games off steam profile
+  }
   let text = message.content;
   if(text.startsWith(comms.DELIMITER)){
     try{

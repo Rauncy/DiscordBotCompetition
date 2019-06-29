@@ -578,3 +578,99 @@ addCommand("list", {
     }
   });
 });
+
+addCommand("register", {
+  params : "s",
+  description : "Help is a command to tell you to what each command the bot has to offer does and how to use them.",
+  syntax : ["Command"]
+}, (message, params) => {
+  message.author.send("Hello and welcome to the BestFit Bot.");
+  grp.getGuild(message.guild).then((data) => {
+    console.log(data);
+    message.author.send(`The games currently registered on this server include:\n` + Object.keys(data).join("`, `"));
+    message.author.send("If you give me a link to your Steam profile I can automatically add you to groups based on games you own.\nOtherwise you can select them manually by saying \'manual\'.");
+  });
+});
+
+addCommand("initialize", {
+  params : "s",
+  description : "Help is a command to tell you to what each command the bot has to offer does and how to use them.",
+  syntax : ["Command"]
+}, (message, params) => {
+  var server = message.guild;
+  var name = "bestfit registry";
+  var id = server.roles.find('name', '@everyone').id;
+  console.log(id);
+  var obj = {
+    "type":"text",
+    "position":0,
+    "permissionOverwrites":[{
+      "deny":0x00000800,
+      "id":id
+    }]
+  };
+
+  server.createChannel(name, obj).then((channel) => {
+    grp.getGuild(message.guild).then((data) => {
+      console.log(data);
+      channel.send("If you give me a link to your Steam profile I can automatically add you to groups based on games you own.\nOtherwise you can select them manually by reacting to their message.");
+      channel.send(`The games currently registered on this server include:`);
+      Object.keys(data).forEach((game) => {
+        channel.send(game);
+      });
+    });
+  });
+});
+
+exports.setupListeners = ()=>{
+  const bot = require("../bot.js");
+  bot.bot.on("messageReactionAdd", (reaction, user) => {
+    grp.getGuild(reaction.message.guild).then((data) => {
+      Object.keys(data).forEach((game) => {
+        if (reaction.message == game && reaction.message.channel.name == "bestfit-registry") {
+          console.log(reaction.message.guild.member(user) + game);
+          var message = reaction.message;
+          switch(grp.addToGroup(reaction.message.guild.member(user), game)){
+            case "SUCCESS":
+              message.channel.send({embed:{
+                color : 3196712,
+                title : "Added to group successfully",
+                fields : [
+                  {
+                    name : `${n} has been added to ${params[1]} successfully`,
+                    value : `To remove from ${params[1]}, use \`${exports.DELIMITER}remove ${exports.syntaxOf("remove").slice(0,1).join(" ")} [${params[1]}]\``
+                  }
+                ]
+              }});
+              break;
+            case "PRESENT":
+              message.channel.send({embed:{
+                color : 15583545,
+                title : "Error adding to group",
+                fields : [
+                  {
+                    name : `${n} is already in \`${params[1]}\``,
+                    value : `${n} cannot be added to a group multiple times`
+                  }
+                ]
+              }});
+              break;
+            case "NO_GROUP":
+              message.channel.send({embed:{
+                color : 12663844,
+                title : "Error adding to group",
+                fields : [
+                  {
+                    name : `\`${params[1]}\` is not a group`,
+                    value : `${n} cannot be added to ${params[1]} because that group doesn't exist`
+                  }
+                ]
+              }});
+              break;
+          }
+          user.send("Added you to " + game);
+        }
+      });
+    });
+  });
+}
