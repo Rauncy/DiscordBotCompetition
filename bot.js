@@ -1,3 +1,5 @@
+//Created by Rauncy and 0tpyrk for Discord's Hack Week 2019
+
 const djs = require("discord.js");
 const readline = require("readline");
 const fs = require("fs");
